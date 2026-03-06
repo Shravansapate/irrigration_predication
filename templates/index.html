@@ -46,9 +46,12 @@
             <label for="crop_coefficient">
               <span class="icon">🌿</span> Crop Coefficient (Kc)
             </label>
-            <input type="number" id="crop_coefficient" name="crop_coefficient"
-                   placeholder="e.g. 0.75" step="0.01" min="0.1" max="1.5" required />
-            <span class="hint">Initial ≈ 0.42 · Mid-season ≈ 1.15</span>
+            <div class="kc-input-row">
+              <input type="number" id="crop_coefficient" name="crop_coefficient"
+                     placeholder="e.g. 0.75" step="0.01" min="0.1" max="1.5" required />
+              <button type="button" class="suggest-btn" onclick="suggestKc()" title="Auto-fill Kc based on Days Since Planting">Auto</button>
+            </div>
+            <span class="hint">Initial ≈ 0.60 · Mid-season ≈ 1.15 · Late ≈ 0.70 — <button type="button" class="kc-toggle-btn" onclick="toggleKcGuide()">View Guide</button></span>
           </div>
 
           <div class="form-group">
@@ -76,6 +79,27 @@
         </button>
 
       </form>
+    </div>
+
+    <!-- Kc Reference Guide (hidden by default, toggled by "View Guide") -->
+    <div class="card kc-guide" id="kc-guide" style="display:none;">
+      <h2>🌿 Tomato Kc Reference Guide</h2>
+      <p class="kc-intro">Crop Coefficient (Kc) values by growth stage — FAO-56 standard for tomatoes:</p>
+      <table class="kc-table">
+        <thead>
+          <tr><th>Growth Stage</th><th>Days After Planting</th><th>Kc</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🌱 Initial</td><td>1 – 30</td><td class="kc-val">0.60</td><td>Transplanting to early establishment</td></tr>
+          <tr><td>📈 Development</td><td>31 – 60</td><td class="kc-val">0.60 → 1.15</td><td>Rapid leaf area growth (interpolated linearly)</td></tr>
+          <tr><td>🍅 Mid-Season</td><td>61 – 90</td><td class="kc-val kc-peak">1.15</td><td>Full canopy cover — peak water demand</td></tr>
+          <tr><td>📉 Late Season</td><td>91 – 120</td><td class="kc-val">1.15 → 0.60</td><td>Ripening begins, water demand declines</td></tr>
+          <tr><td>🍂 End Season</td><td>120 +</td><td class="kc-val">0.60</td><td>Harvest period, senescence</td></tr>
+        </tbody>
+      </table>
+      <div class="kc-tip">
+        💡 <strong>Tip:</strong> Fill in <em>Days Since Planting</em> first, then click <strong>Auto</strong> next to the Kc field to populate the correct value automatically.
+      </div>
     </div>
 
     <!-- Result Card (hidden until prediction) -->
@@ -123,6 +147,35 @@
   </div>
 
   <script>
+    // ── Kc auto-suggest (FAO-56 tomato growth stages) ─────────────────────────
+    function suggestKc() {
+      const days = parseInt(document.getElementById("days_planted").value);
+      if (!days || days < 1) {
+        document.getElementById("days_planted").focus();
+        return;
+      }
+      let kc;
+      if      (days <= 30)  { kc = 0.60; }
+      else if (days <= 60)  { kc = +(0.60 + ((days - 30) / 30) * (1.15 - 0.60)).toFixed(2); }
+      else if (days <= 90)  { kc = 1.15; }
+      else if (days <= 120) { kc = +(1.15 + ((days - 90) / 30) * (0.60 - 1.15)).toFixed(2); }
+      else                  { kc = 0.60; }
+
+      const inp = document.getElementById("crop_coefficient");
+      inp.value = kc;
+      inp.style.borderColor = "#43a047";
+      inp.style.boxShadow   = "0 0 0 3px rgba(67,160,71,0.25)";
+      setTimeout(() => { inp.style.borderColor = ""; inp.style.boxShadow = ""; }, 1600);
+    }
+
+    function toggleKcGuide() {
+      const guide = document.getElementById("kc-guide");
+      const isHidden = guide.style.display === "none";
+      guide.style.display = isHidden ? "block" : "none";
+      if (isHidden) guide.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ── Prediction form ────────────────────────────────────────────────────────
     const form    = document.getElementById("predict-form");
     const btn     = document.getElementById("predict-btn");
     const resCard = document.getElementById("result-card");

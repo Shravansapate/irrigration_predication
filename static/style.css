@@ -191,3 +191,84 @@ footer {
   color: #999;
   padding-bottom: 1rem;
 }
+
+/* ── Kc input row (input + Auto button side-by-side) ─────────────────────── */
+.kc-input-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+.kc-input-row input { flex: 1; }
+
+.suggest-btn {
+  background: #e8f5e9;
+  border: 1.5px solid #a5d6a7;
+  border-radius: 8px;
+  padding: 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2e7d32;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.suggest-btn:hover { background: #c8e6c9; }
+
+/* ── "View Guide" inline text-button ────────────────────────────────────────*/
+.kc-toggle-btn {
+  background: none;
+  border: none;
+  color: #1565c0;
+  font-size: 0.73rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.kc-toggle-btn:hover { color: #0d47a1; }
+
+/* ── Kc Reference Guide card ─────────────────────────────────────────────── */
+.kc-guide { animation: fadeIn 0.3s ease; }
+.kc-intro {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 1rem;
+}
+
+.kc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  margin-bottom: 1rem;
+}
+.kc-table th {
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-weight: 700;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 2px solid #c8e6c9;
+}
+.kc-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+.kc-table tr:last-child td { border-bottom: none; }
+.kc-table tr:hover td { background: #f9fbe7; }
+
+.kc-val  { font-weight: 700; color: #2e7d32; font-family: monospace; }
+.kc-peak { color: #1565c0 !important; }
+
+.kc-tip {
+  background: #fffde7;
+  border-left: 4px solid #f9a825;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  font-size: 0.83rem;
+  color: #5d4037;
+}
+
+@media (max-width: 520px) {
+  .kc-table th:last-child,
+  .kc-table td:last-child { display: none; }
+}
