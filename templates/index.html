@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Irrigation Scheduler</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- Header -->
+    <header>
+      <div class="logo">🌱</div>
+      <h1>Tomato Irrigation Scheduler</h1>
+      <p class="subtitle">AI-powered prediction · Model: <span id="model-badge">{{ model_name }}</span></p>
+    </header>
+
+    <!-- Input Card -->
+    <div class="card">
+      <h2>Enter Sensor Readings</h2>
+      <form id="predict-form">
+
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="soil_moisture">
+              <span class="icon">💧</span> Soil Moisture
+            </label>
+            <input type="number" id="soil_moisture" name="soil_moisture"
+                   placeholder="e.g. 350" step="1" required />
+            <span class="hint">Threshold: &lt; 400 → irrigation needed</span>
+          </div>
+
+          <div class="form-group">
+            <label for="et0">
+              <span class="icon">☀️</span> ET₀ — Reference Evapotranspiration
+            </label>
+            <input type="number" id="et0" name="et0"
+                   placeholder="e.g. 560" step="0.01" required />
+            <span class="hint">mm/day</span>
+          </div>
+
+          <div class="form-group">
+            <label for="crop_coefficient">
+              <span class="icon">🌿</span> Crop Coefficient (Kc)
+            </label>
+            <input type="number" id="crop_coefficient" name="crop_coefficient"
+                   placeholder="e.g. 0.75" step="0.01" min="0.1" max="1.5" required />
+            <span class="hint">Initial ≈ 0.42 · Mid-season ≈ 1.15</span>
+          </div>
+
+          <div class="form-group">
+            <label for="days_planted">
+              <span class="icon">📅</span> Days Since Planting
+            </label>
+            <input type="number" id="days_planted" name="days_planted"
+                   placeholder="e.g. 45" step="1" min="1" required />
+            <span class="hint">Days since transplanting</span>
+          </div>
+
+          <div class="form-group">
+            <label for="temperature">
+              <span class="icon">🌡️</span> Temperature (°C)
+            </label>
+            <input type="number" id="temperature" name="temperature"
+                   placeholder="e.g. 31.0" step="0.1" required />
+            <span class="hint">Ambient air temperature</span>
+          </div>
+
+        </div>
+
+        <button type="submit" id="predict-btn">
+          <span class="btn-icon">🔍</span> Predict Irrigation Need
+        </button>
+
+      </form>
+    </div>
+
+    <!-- Result Card (hidden until prediction) -->
+    <div class="card result-card" id="result-card" style="display:none;">
+      <h2>Prediction Result</h2>
+
+      <div class="result-banner" id="result-banner">
+        <div class="result-icon" id="result-icon"></div>
+        <div class="result-text">
+          <div class="result-label" id="result-label"></div>
+          <div class="result-sub" id="result-sub"></div>
+        </div>
+      </div>
+
+      <div class="prob-bars">
+        <div class="prob-row">
+          <span class="prob-name">Irrigate</span>
+          <div class="bar-track">
+            <div class="bar irrigate-bar" id="bar-irrigate"></div>
+          </div>
+          <span class="prob-val" id="val-irrigate"></span>
+        </div>
+        <div class="prob-row">
+          <span class="prob-name">No Irrigation</span>
+          <div class="bar-track">
+            <div class="bar no-irrigate-bar" id="bar-no-irrigate"></div>
+          </div>
+          <span class="prob-val" id="val-no-irrigate"></span>
+        </div>
+      </div>
+
+      <p class="model-tag">Model: <strong id="model-used"></strong></p>
+    </div>
+
+    <!-- Error Card -->
+    <div class="card error-card" id="error-card" style="display:none;">
+      <span class="error-icon">⚠️</span>
+      <span id="error-msg"></span>
+    </div>
+
+    <footer>
+      <p>Tomato Crop · Random Forest · SMOTE · 10-Fold Stratified CV</p>
+    </footer>
+
+  </div>
+
+  <script>
+    const form    = document.getElementById("predict-form");
+    const btn     = document.getElementById("predict-btn");
+    const resCard = document.getElementById("result-card");
+    const errCard = document.getElementById("error-card");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      resCard.style.display = "none";
+      errCard.style.display = "none";
+      btn.disabled = true;
+      btn.textContent = "⏳ Predicting…";
+
+      const payload = {
+        soil_moisture    : parseFloat(document.getElementById("soil_moisture").value),
+        et0              : parseFloat(document.getElementById("et0").value),
+        crop_coefficient : parseFloat(document.getElementById("crop_coefficient").value),
+        days_planted     : parseInt(document.getElementById("days_planted").value),
+        temperature      : parseFloat(document.getElementById("temperature").value),
+      };
+
+      try {
+        const res  = await fetch("/predict", {
+          method : "POST",
+          headers: { "Content-Type": "application/json" },
+          body   : JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        const banner    = document.getElementById("result-banner");
+        const needsWater = data.label === 1;
+
+        // Banner colour
+        banner.className = "result-banner " + (needsWater ? "irrigate" : "no-irrigate");
+        document.getElementById("result-icon").textContent  = needsWater ? "💧" : "✅";
+        document.getElementById("result-label").textContent = data.prediction;
+        document.getElementById("result-sub").textContent   =
+          needsWater
+            ? `Confidence: ${(data.prob_irrigate * 100).toFixed(1)}%`
+            : `Confidence: ${(data.prob_no_irrigate * 100).toFixed(1)}%`;
+
+        // Probability bars
+        const pIrr = (data.prob_irrigate * 100).toFixed(1);
+        const pNo  = (data.prob_no_irrigate * 100).toFixed(1);
+        document.getElementById("bar-irrigate").style.width    = pIrr + "%";
+        document.getElementById("bar-no-irrigate").style.width = pNo  + "%";
+        document.getElementById("val-irrigate").textContent    = pIrr + "%";
+        document.getElementById("val-no-irrigate").textContent = pNo  + "%";
+        document.getElementById("model-used").textContent      = data.model_used;
+
+        resCard.style.display = "block";
+        resCard.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      } catch (err) {
+        document.getElementById("error-msg").textContent = err.message;
+        errCard.style.display = "flex";
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">🔍</span> Predict Irrigation Need';
+      }
+    });
+  </script>
+
+</body>
+</html>

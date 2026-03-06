@@ -1,0 +1,15 @@
+{
+  "features": [
+    "Soil moisture",
+    "Reference evapotranspiration",
+    "Crop Coefficient",
+    "Days of planted",
+    "Temperature [_ C]"
+  ],
+  "model_name": "Random Forest",
+  "threshold": 400,
+  "labels": {
+    "0": "No Irrigation Needed",
+    "1": "Irrigate"
+  }
+}
